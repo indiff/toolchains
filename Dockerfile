@@ -19,6 +19,12 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update -y && \
     apt-get install -y --no-install-recommends \
         autoconf automake libtool-bin make texinfo help2man \
+        cmake ninja-build libssl-dev \
+        build-essential \
+        git \
+        libtool \
+        pkg-config \
+        zlib1g-dev \
         sudo file gawk patch \
         python3 \
         g++ bison flex gperf \
@@ -26,6 +32,15 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         perl libthread-queue-perl \
         ca-certificates wget git \
         bzip2 xz-utils unzip rsync && \
+    wget https://github.com/Kitware/CMake/releases/download/v3.28.3/cmake-3.28.3.tar.gz \
+    && gcc --version \
+    && tar -xzf cmake-3.28.3.tar.gz \
+    && cd cmake-3.28.3 \
+    && ./bootstrap --prefix=/usr/local \
+    && make -j$(nproc) \
+    && make install \
+    && cd .. \
+    && rm -rf cmake-3.28.3 \
     apt-get clean autoclean && \
     apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/*
@@ -48,6 +63,7 @@ RUN wget https://ftp.gnu.org/gnu/autoconf/autoconf-2.72.tar.gz -O- | tar xz && \
 ENV PATH=/home/develop/.local/bin:${PATH}
 
 # Build crosstool-ng
+# git checkout f390dba6c73845389a3217169402d95a837fcee8 && \
 RUN git clone -b master --single-branch \
         https://github.com/crosstool-ng/crosstool-ng.git && \
     cd crosstool-ng && \
@@ -82,14 +98,23 @@ ARG PKG_VERSION
 COPY --chown=develop:develop ${HOST_TRIPLE}.defconfig .
 COPY --chown=develop:develop ${HOST_TRIPLE}.env .
 RUN [ -n "${GCC_VERSION}" ] && { echo "CT_GCC_V_${GCC_VERSION}=y" >> ${HOST_TRIPLE}.defconfig; }
-RUN [ -n "${PKG_VERSION}" ] && { echo "CT_TOOLCHAIN_PKGVERSION=\"tttapa/toolchains@${PKG_VERSION}\"" >> ${HOST_TRIPLE}.defconfig; }
+RUN [ -n "${PKG_VERSION}" ] && { echo "CT_TOOLCHAIN_PKGVERSION=\"indiff/toolchains@${PKG_VERSION}\"" >> ${HOST_TRIPLE}.defconfig; }
 RUN cp ${HOST_TRIPLE}.defconfig defconfig && ct-ng defconfig
 RUN . ./${HOST_TRIPLE}.env && \
     ct-ng build || { cat build.log && false; } && rm -rf .build
 
 RUN chmod +w /home/develop/x-tools/${HOST_TRIPLE}
 COPY --chown=develop:develop --from=config /config-${HOST_TRIPLE}/* /home/develop/x-tools
-RUN chmod -w /home/develop/x-tools/${HOST_TRIPLE}
+RUN chmod -w /home/develop/x-tools/${HOST_TRIPLE} && \
+          cd /home/develop && \
+          git clone https://github.com/rui314/mold.git && \
+          cd mold && \
+          /home/develop/x-tools/${HOST_TRIPLE}/bin/${HOST_TRIPLE}-gcc --version && \
+          cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER="/home/develop/x-tools/${HOST_TRIPLE}/bin/${HOST_TRIPLE}-gcc" -DCMAKE_CXX_COMPILER="/home/develop/x-tools/${HOST_TRIPLE}/bin/${HOST_TRIPLE}-g++" \
+          -DCMAKE_INSTALL_PREFIX="/home/develop/x-tools/${HOST_TRIPLE}" \
+          -B build && \
+          cmake --build build -j$(nproc) && \
+          cmake --install build || ( cd build && make install ) || true 
 
 # Build container (base) -------------------------------------------------------
 
