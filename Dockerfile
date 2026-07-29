@@ -53,13 +53,13 @@ USER develop
 WORKDIR /home/develop
 
 # Install autoconf
-RUN wget https://ftp.gnu.org/gnu/autoconf/autoconf-2.72.tar.gz -O- | tar xz && \
-    cd autoconf-2.72 && \
+RUN wget https://ftp.gnu.org/gnu/autoconf/autoconf-2.73.tar.gz -O- | tar xz && \
+    cd autoconf-2.73 && \
     ./configure --prefix=/home/develop/.local && \
     make -j$(nproc) && \
     make install && \
     cd .. && \
-    rm -rf autoconf-2.72
+    rm -rf autoconf-2.73
 ENV PATH=/home/develop/.local/bin:${PATH}
 
 # Build crosstool-ng
@@ -80,10 +80,12 @@ RUN git clone -b master --single-branch \
 # Patches
 # https://www.raspberrypi.org/forums/viewtopic.php?f=91&t=280707&p=1700861#p1700861
 # See https://packages.debian.org/sid/binutils for an up-to-date download URL
-RUN wget https://ftp.debian.org/debian/pool/main/b/binutils/binutils_2.46-3.debian.tar.xz -O- | \
+# https://ftp.debian.org/debian/pool/main/b/binutils/binutils_2.47-2.debian.tar.xz
+# https://ftp.debian.org/debian/pool/main/b/binutils/binutils_2.46-3.debian.tar.xz
+RUN wget https://ftp.debian.org/debian/pool/main/b/binutils/binutils_2.47-2.debian.tar.xz -O- | \
     tar xJ debian/patches/129_multiarch_libpath.patch && \
-    mkdir -p patches/binutils/2.46.0 && \
-    mv debian/patches/129_multiarch_libpath.patch patches/binutils/2.46.0 && \
+    mkdir -p patches/binutils/2.47.0 && \
+    mv debian/patches/129_multiarch_libpath.patch patches/binutils/2.47.0 && \
     rm -rf debian
 
 # Toolchain --------------------------------------------------------------------
