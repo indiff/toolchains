@@ -17,8 +17,8 @@ FROM --platform=$BUILDPLATFORM debian:bullseye AS ct-ng
 # Install dependencies to build crosstool-ng and the toolchain
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update -y && \
-    apt-get install -y --no-install-recommends \
-        autoconf automake libtool-bin make texinfo help2man \
+    apt-get -o Acquire::Retries=5 install -y --no-install-recommends \
+        autoconf automake pkg-config libtool-bin make texinfo help2man \
         cmake ninja-build libssl-dev \
         build-essential \
         git \
@@ -67,8 +67,7 @@ ENV PATH=/home/develop/.local/bin:${PATH}
 RUN git clone -b master --single-branch \
         https://github.com/crosstool-ng/crosstool-ng.git && \
     cd crosstool-ng && \
-    git fetch origin refs/pull/2502/head:pr/2502 && \
-    git checkout 43780e61fc95677d2fa7d042f32f889da064c6a3 && \
+    git checkout 2e5d0b813867c4bca820592ff01775aba1367e0f && \
     git show --summary && \
     ./bootstrap && \
     mkdir build && cd build && \
@@ -101,6 +100,7 @@ COPY --chown=develop:develop ${HOST_TRIPLE}.defconfig .
 COPY --chown=develop:develop ${HOST_TRIPLE}.env .
 RUN [ -n "${GCC_VERSION}" ] && { echo "CT_GCC_V_${GCC_VERSION}=y" >> ${HOST_TRIPLE}.defconfig; }
 RUN [ -n "${PKG_VERSION}" ] && { echo "CT_TOOLCHAIN_PKGVERSION=\"indiff/toolchains@${PKG_VERSION}\"" >> ${HOST_TRIPLE}.defconfig; }
+RUN echo "CT_CONNECT_TIMEOUT=30" >> ${HOST_TRIPLE}.defconfig
 RUN cp ${HOST_TRIPLE}.defconfig defconfig && ct-ng defconfig
 RUN . ./${HOST_TRIPLE}.env && \
     ct-ng build || { cat build.log && false; } && rm -rf .build
@@ -124,7 +124,7 @@ FROM debian:trixie AS gcc-dev-base
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update -y && \
-    apt-get install --no-install-recommends -y \
+    apt-get -o Acquire::Retries=5 install --no-install-recommends -y \
         ninja-build cmake make bison flex \
         tar xz-utils gzip zip unzip bzip2 zstd \
         ca-certificates wget git sudo file && \
